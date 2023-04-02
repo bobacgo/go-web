@@ -2,14 +2,15 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"github.com/gogoclouds/go-web/intermal/systme/model"
 	"log"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/gogoclouds/go-web/intermal/systme/model"
+	"github.com/gogoclouds/go-web/intermal/util"
 )
 
 func main() {
@@ -50,7 +51,7 @@ func listToTree(list []*model.RegionCode) {
 			oneLevelTree = append(oneLevelTree, *code)
 		}
 	}
-	WriteFile("./2020_region_code_tree.json", oneLevelTree)
+	util.File.WriteJson("./2020_region_code_tree.json", oneLevelTree)
 }
 
 func ReadFile() {
@@ -85,7 +86,8 @@ func ReadFile() {
 		}
 		return false
 	})
-	WriteFile("./2020_region_code_list.json", regionCodes)
+
+	util.File.WriteJson("./2020_region_code_list.json", regionCodes)
 	listToTree(regionCodes)
 }
 
@@ -100,14 +102,4 @@ func GetStrCn(str string) (cnStr string) {
 		}
 	}
 	return
-}
-
-func WriteFile(path string, data any) {
-	tree, err := json.Marshal(data)
-	if err != nil {
-		fmt.Println(err)
-	}
-	if err = os.WriteFile(path, tree, 0666); err != nil {
-		log.Fatalln(err)
-	}
 }
