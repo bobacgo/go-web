@@ -13,7 +13,7 @@ import (
 )
 
 type IUser interface {
-	PageList(req model.PageQuery) (*r.PageResp[model.SysUser], *g.Error)
+	PageList(req model.UserPageQuery) (*r.PageAnyResp, *g.Error)
 	Details(id string) (model.SysUser, *g.Error)
 	Create(req model.UserCreateReq) *g.Error
 	Updates(req model.SysUser) *g.Error
@@ -26,7 +26,7 @@ var userDao dao.IUser = new(dao.User)
 
 type User struct{}
 
-func (svc *User) PageList(req model.PageQuery) (*r.PageResp[model.SysUser], *g.Error) {
+func (svc *User) PageList(req model.UserPageQuery) (*r.PageAnyResp, *g.Error) {
 	return userDao.PageList(req)
 }
 

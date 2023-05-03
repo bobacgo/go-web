@@ -10,14 +10,12 @@ import (
 	"github.com/gogoclouds/gogo/web/r"
 )
 
-var SysUserApi = new(sysUserApi)
-
-type sysUserApi struct{}
+type UserApi struct{}
 
 var userService service.IUser = new(service.User)
 
-func (api sysUserApi) PageList(ctx *gin.Context) {
-	req, ok := valid.ShouldBind[model.PageQuery](ctx)
+func (api UserApi) PageList(ctx *gin.Context) {
+	req, ok := valid.ShouldBind[model.UserPageQuery](ctx)
 	if !ok {
 		return
 	}
@@ -30,7 +28,7 @@ func (api sysUserApi) PageList(ctx *gin.Context) {
 	reply.SuccessRead(ctx, pageResp)
 }
 
-func (api sysUserApi) Details(ctx *gin.Context) {
+func (api UserApi) Details(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[r.IdReq](ctx)
 	if !ok {
 		return
@@ -44,7 +42,7 @@ func (api sysUserApi) Details(ctx *gin.Context) {
 	reply.SuccessRead(ctx, user)
 }
 
-func (api sysUserApi) Create(ctx *gin.Context) {
+func (api UserApi) Create(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.UserCreateReq](ctx)
 	if !ok {
 		return
@@ -57,7 +55,7 @@ func (api sysUserApi) Create(ctx *gin.Context) {
 	reply.SuccessCreate(ctx)
 }
 
-func (api sysUserApi) Update(ctx *gin.Context) {
+func (api UserApi) Update(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.SysUser](ctx)
 	if !ok {
 		return
@@ -71,7 +69,7 @@ func (api sysUserApi) Update(ctx *gin.Context) {
 	return
 }
 
-func (api sysUserApi) UpdateStatus(c *gin.Context) {
+func (api UserApi) UpdateStatus(c *gin.Context) {
 	req, ok := valid.ShouldBind[model.UserUpdateStatusReq](c)
 	if !ok {
 		return
@@ -84,7 +82,7 @@ func (api sysUserApi) UpdateStatus(c *gin.Context) {
 	reply.SuccessUpdate(c)
 }
 
-func (api sysUserApi) UpdatePassword(c *gin.Context) {
+func (api UserApi) UpdatePassword(c *gin.Context) {
 	req, ok := valid.ShouldBind[model.UserUpdatePasswdReq](c)
 	if !ok {
 		return
@@ -97,7 +95,7 @@ func (api sysUserApi) UpdatePassword(c *gin.Context) {
 	reply.SuccessUpdate(c)
 }
 
-func (api sysUserApi) Delete(ctx *gin.Context) {
+func (api UserApi) Delete(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[r.IdReq](ctx)
 	if !ok {
 		return

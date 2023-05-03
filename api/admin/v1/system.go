@@ -5,20 +5,18 @@ import (
 	"github.com/gogoclouds/go-web/intermal/app/admin/service"
 )
 
-var SystemApi = new(systemApi)
-
-type systemApi struct{}
+type SystemApi struct{}
 
 var systemService service.ISystem = new(service.System)
 
-func (s systemApi) Login(c *gin.Context) {
+func (api SystemApi) Login(c *gin.Context) {
 	systemService.Login()
 }
 
-func (s systemApi) Logout(c *gin.Context) {
+func (api SystemApi) Logout(c *gin.Context) {
 	systemService.Logout()
 }
 
-func (s systemApi) Captcha(c *gin.Context) {
+func (api SystemApi) Captcha(c *gin.Context) {
 	systemService.Captcha()
 }

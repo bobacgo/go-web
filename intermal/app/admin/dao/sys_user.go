@@ -11,7 +11,7 @@ import (
 )
 
 type IUser interface {
-	PageList(q model.PageQuery) (*r.PageResp[model.SysUser], *g.Error)
+	PageList(q model.UserPageQuery) (*r.PageAnyResp, *g.Error)
 	FindByID(ID string) (model.SysUser, *g.Error)
 	Create(u model.SysUser) *g.Error
 	Update(u model.SysUser) *g.Error
@@ -20,12 +20,16 @@ type IUser interface {
 
 type User struct{}
 
-func (dao *User) PageList(q model.PageQuery) (*r.PageResp[model.SysUser], *g.Error) {
-
+func (dao *User) PageList(q model.UserPageQuery) (*r.PageAnyResp, *g.Error) {
 	// 要求
 	// 1.支持 账号名 模糊搜索
 	// 2.支持 手机号 模糊搜索
 	// 3.支持 昵称 模糊搜索
+
+	type UserInfo struct {
+		model.SysUser
+		RoleInfo model.SimpleRole `json:"roleInfo" gorm:"foreignKey:RoleID;references:ID"`
+	}
 
 	db := g.DB.Model(&model.SysUser{})
 	if q.Username != "" {
@@ -37,8 +41,8 @@ func (dao *User) PageList(q model.PageQuery) (*r.PageResp[model.SysUser], *g.Err
 	if q.Nickname != "" {
 		db.Where("nickname LIKE ?", "%"+q.Nickname+"%")
 	}
-	//db.Order("updated_at DESC")
-	data, err := orm.PageFind[model.SysUser](db, q.PageInfo)
+	db.Order("updated_at DESC").Preload("RoleInfo")
+	data, err := orm.PageAnyFind[UserInfo](db, q.PageInfo)
 	return data, g.WrapError(err, r.FailRead)
 }
 

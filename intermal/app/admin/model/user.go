@@ -32,7 +32,20 @@ type Attribute struct {
 	Address     common.Location  `json:"address"`
 }
 
-type PageQuery struct {
+func (SysUser) TableName() string {
+	return "sys_users"
+}
+
+type SimpleUser struct {
+	ID       string `json:"id" gorm:"primarykey"`
+	Nickname string `json:"nickname" gorm:"type:varchar(100)"`
+}
+
+func (SimpleUser) TableName() string {
+	return SysUser{}.TableName()
+}
+
+type UserPageQuery struct {
 	r.PageInfo
 	Username string `json:"username"`
 	Nickname string `json:"nickname"`

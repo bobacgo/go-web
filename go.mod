@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/gin-gonic/gin v1.9.0
-	github.com/gogoclouds/gogo v0.0.4
+	github.com/gogoclouds/gogo v0.0.5
 	github.com/jinzhu/copier v0.3.5
 	github.com/pkg/errors v0.9.1
 	gorm.io/datatypes v1.2.0
