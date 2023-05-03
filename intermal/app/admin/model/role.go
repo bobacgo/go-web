@@ -1,10 +1,10 @@
 package model
 
-import "github.com/gogoclouds/go-web/intermal/common"
+import "github.com/gogoclouds/gogo/web/orm"
 
 // SysRole 系统角色
 type SysRole struct {
-	common.OrmModel
+	orm.Model
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }

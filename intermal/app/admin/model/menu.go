@@ -1,10 +1,10 @@
 package model
 
-import "github.com/gogoclouds/go-web/intermal/common"
+import "github.com/gogoclouds/gogo/web/orm"
 
 // SysMenu 系统菜单
 type SysMenu struct {
-	common.OrmModel
+	orm.Model
 	ParentId string     `json:"parentId"`
 	Name     string     `json:"name"`
 	Path     string     `json:"path"`
@@ -12,5 +12,5 @@ type SysMenu struct {
 	Method   string     `json:"method"` // 请求方法 GET | POST | PUT | DELETE
 	Icon     string     `json:"icon"`
 	Sort     int        `json:"sort"`
-	Children []*SysMenu `json:"children"`
+	Children []*SysMenu `json:"children" gorm:"-"`
 }
