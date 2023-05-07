@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/gogoclouds/go-web/intermal/app/admin/enum"
 	"github.com/gogoclouds/gogo/web/orm"
+	"github.com/gogoclouds/gogo/web/r"
 )
 
 // 设计
@@ -37,4 +38,19 @@ func (SimpleMenu) TableName() string {
 
 type MenuTreeReq struct {
 	Name string `json:"name"`
+}
+
+type MenuCreateReq struct {
+	ParentId string        `json:"parentId"`
+	Name     string        `json:"name" binding:"required"`
+	Path     string        `json:"path" binding:"required_if=MenuType 2"`
+	MenuType enum.MenuType `json:"menuType" binding:"required"`
+	Method   string        `json:"method" binding:"required_if=MenuType 3"` // net/http/method.go oneof=GET POST PUT DELETE
+	Icon     string        `json:"icon"`
+	Sort     uint8         `json:"sort"`
+}
+
+type MenuUpdateReq struct {
+	r.IdReq
+	MenuCreateReq
 }

@@ -7,14 +7,14 @@ package enum
 type MenuType uint8
 
 const (
-	MenuDir MenuType = iota + 1
-	Menu
-	MenuBtn
+	MenuType_Dir MenuType = iota + 1
+	MenuType_Menu
+	MenuType_Btn
 )
 
 // Name 返回枚举值的名称
 func (e MenuType) Name() string {
-	if e < MenuDir || e > MenuBtn {
+	if e < MenuType_Dir || e > MenuType_Btn {
 		return "未知"
 	}
 	return [...]string{"目录", "菜单", "按钮"}[e]

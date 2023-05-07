@@ -1,7 +1,9 @@
 package v1
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/gogoclouds/go-web/intermal/app/admin/enum"
 	"github.com/gogoclouds/go-web/intermal/app/admin/model"
 	"github.com/gogoclouds/go-web/intermal/app/admin/service"
 	"github.com/gogoclouds/gogo/logger"
@@ -21,7 +23,7 @@ func (api MenuApi) Tree(ctx *gin.Context) {
 	}
 	pageResp, err := menuService.Tree(req)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error(err)
 		reply.FailMsg(ctx, err.Text)
 		return
 	}
@@ -29,25 +31,25 @@ func (api MenuApi) Tree(ctx *gin.Context) {
 }
 
 func (api MenuApi) Create(ctx *gin.Context) {
-	req, ok := valid.ShouldBind[model.SysMenu](ctx)
+	req, ok := valid.ShouldBind[model.MenuCreateReq](ctx)
 	if !ok {
 		return
 	}
 	if err := menuService.Create(req); err != nil {
-		logger.Error(err.Error())
-		reply.FailMsg(ctx, err.Text)
+		logger.Errorf("%+v", err)
+		reply.FailMsg(ctx, r.FailCreate)
 		return
 	}
 	reply.SuccessCreate(ctx)
 }
 
 func (api MenuApi) Update(ctx *gin.Context) {
-	req, ok := valid.ShouldBind[model.SysMenu](ctx)
+	req, ok := valid.ShouldBind[model.MenuUpdateReq](ctx)
 	if !ok {
 		return
 	}
 	if err := menuService.Updates(req); err != nil {
-		logger.Error(err.Error())
+		logger.Error(err)
 		reply.FailMsg(ctx, err.Text)
 		return
 	}
@@ -61,9 +63,18 @@ func (api MenuApi) Delete(ctx *gin.Context) {
 		return
 	}
 	if err := menuService.Delete(req.ID); err != nil {
-		logger.Error(err.Error())
+		logger.Error(err)
 		reply.FailMsg(ctx, err.Text)
 		return
 	}
 	reply.SuccessDelete(ctx)
+}
+
+func (api MenuApi) ParamValid(req model.SysMenu) error {
+	if req.MenuType == enum.MenuType_Btn {
+		if req.Method != "" {
+			return errors.New("菜单按钮对应的HTTP请求方法不能为空")
+		}
+	}
+	return nil
 }
