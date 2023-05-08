@@ -44,8 +44,8 @@ type MenuCreateReq struct {
 	ParentId string        `json:"parentId"`
 	Name     string        `json:"name" binding:"required"`
 	Path     string        `json:"path" binding:"required_if=MenuType 2"`
-	MenuType enum.MenuType `json:"menuType" binding:"required"`
-	Method   string        `json:"method" binding:"required_if=MenuType 3"` // net/http/method.go oneof=GET POST PUT DELETE
+	MenuType enum.MenuType `json:"menuType" binding:"required,oneof=1 2 3"`
+	Method   string        `json:"method" binding:"oneof='' GET POST PUT DELETE"` // net/http/method.go
 	Icon     string        `json:"icon"`
 	Sort     uint8         `json:"sort"`
 }
