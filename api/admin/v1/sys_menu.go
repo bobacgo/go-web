@@ -30,6 +30,20 @@ func (api MenuApi) Tree(ctx *gin.Context) {
 	reply.SuccessRead(ctx, pageResp)
 }
 
+func (api MenuApi) SimpleTree(ctx *gin.Context) {
+	req, ok := valid.ShouldBind[model.MenuTreeReq](ctx)
+	if !ok {
+		return
+	}
+	pageResp, err := menuService.SimpleTree(req)
+	if err != nil {
+		logger.Error(err)
+		reply.FailMsg(ctx, err.Text)
+		return
+	}
+	reply.SuccessRead(ctx, pageResp)
+}
+
 func (api MenuApi) Create(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.MenuCreateReq](ctx)
 	if !ok {

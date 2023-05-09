@@ -8,10 +8,12 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type IMenu interface {
 	Tree(req model.MenuTreeReq) ([]*model.SysMenu, *g.Error)
+	SimpleTree(q model.MenuTreeReq) ([]*model.SimpleMenu, *g.Error)
 	Create(req model.MenuCreateReq) error
 	Updates(req model.MenuUpdateReq) *g.Error
 	Delete(id string) *g.Error
@@ -21,28 +23,87 @@ type Menu struct{}
 
 func (svc Menu) Tree(req model.MenuTreeReq) ([]*model.SysMenu, *g.Error) {
 	var menus []*model.SysMenu
-	if err := g.DB.Find(&menus).Error; err != nil {
+	if err := g.DB.Order("sort").Find(&menus).Error; err != nil {
 		return menus, g.WrapError(err, r.FailRead)
 	}
 	if len(menus) == 0 {
 		return make([]*model.SysMenu, 0), nil
 	}
-	sameParentMap := make(map[string][]*model.SysMenu, len(menus))
-	for _, m := range menus {
-		cm := m
-		sameParentMap[m.ParentId] = append(sameParentMap[m.ParentId], cm)
+	menuTree := svc.sliceToTree(menus)
+	if req.Name != "" { // 通过名称过滤树
+		menuTree = svc.filterByName(req.Name, menuTree)
 	}
-	for i, m := range menus {
-		children := sameParentMap[m.ID]
-		if children == nil {
-			children = make([]*model.SysMenu, 0)
+	return menuTree, nil
+}
+
+func (svc Menu) filterByName(name string, menuTree []*model.SysMenu) []*model.SysMenu {
+	var fFn func(n string, t []*model.SysMenu) bool
+	fFn = func(n string, t []*model.SysMenu) bool {
+		for _, m := range t {
+			if strings.Contains(m.Name, n) {
+				return true
+			} else if len(m.Children) > 0 {
+				if fFn(n, m.Children) {
+					return true
+				}
+			}
 		}
-		menus[i].Children = children
+		return false
 	}
+	mt := make([]*model.SysMenu, 0)
+	for _, m := range menuTree {
+		if strings.Contains(m.Name, name) {
+			mt = append(mt, m)
+		} else if fFn(name, m.Children) {
+			mt = append(mt, m)
+		}
+	}
+	return mt
+}
 
-	// TODO 通过名称过滤树
+func (svc Menu) sliceToTree(list []*model.SysMenu) []*model.SysMenu {
+	sp := make(map[string][]*model.SysMenu, len(list))
+	for _, m := range list {
+		cm := m
+		sp[m.ParentId] = append(sp[m.ParentId], cm)
+	}
+	for i, m := range list {
+		c := sp[m.ID]
+		if c == nil {
+			c = make([]*model.SysMenu, 0)
+		}
+		list[i].Children = c
+	}
+	return sp[""]
+}
 
-	return sameParentMap[""], nil
+func (svc Menu) SimpleTree(q model.MenuTreeReq) ([]*model.SimpleMenu, *g.Error) {
+	tree, gerr := svc.Tree(q)
+	if gerr != nil {
+		return nil, gerr
+	}
+	if len(tree) == 0 {
+		return make([]*model.SimpleMenu, 0), nil
+	}
+	simpleTree := svc.toSimpleTree(tree)
+	return simpleTree, nil
+}
+
+func (svc Menu) toSimpleTree(tree []*model.SysMenu) []*model.SimpleMenu {
+	sms := make([]*model.SimpleMenu, 0)
+	var tt func(t []*model.SysMenu, st []*model.SimpleMenu) []*model.SimpleMenu
+	tt = func(t []*model.SysMenu, st []*model.SimpleMenu) []*model.SimpleMenu {
+		for _, m := range t {
+			sn := &model.SimpleMenu{ID: m.ID, Name: m.Name, Children: make([]*model.SimpleMenu, 0)}
+			if len(m.Children) > 0 {
+				sn.Children = tt(m.Children, sn.Children)
+			}
+			st = append(st, sn)
+		}
+		return st
+	}
+	sms = tt(tree, sms)
+	return sms
 }
 
 func (svc Menu) Create(req model.MenuCreateReq) error {

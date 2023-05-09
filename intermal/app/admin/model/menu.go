@@ -28,12 +28,9 @@ func (SysMenu) TableName() string {
 }
 
 type SimpleMenu struct {
-	ID   string `json:"id" gorm:"primarykey"`
-	Name string `json:"name" gorm:"type:varchar(100)"`
-}
-
-func (SimpleMenu) TableName() string {
-	return SysMenu{}.TableName()
+	ID       string        `json:"id"`
+	Name     string        `json:"name"`
+	Children []*SimpleMenu `json:"children"`
 }
 
 type MenuTreeReq struct {

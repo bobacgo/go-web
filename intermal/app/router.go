@@ -75,6 +75,7 @@ func loadRouter(e *gin.Engine) {
 	menu.PUT("", menuApi_v1.Update)
 	menu.DELETE("", menuApi_v1.Delete)
 	menu.POST("tree", menuApi_v1.Tree)
+	menu.POST("simpleTree", menuApi_v1.SimpleTree)
 
 	// sys role
 	roleApi_v1 := new(admin_v1.RoleApi)
