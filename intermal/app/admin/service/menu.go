@@ -11,17 +11,18 @@ import (
 	"strings"
 )
 
-type IMenu interface {
+type IMenuService interface {
 	Tree(req model.MenuTreeReq) ([]*model.SysMenu, *g.Error)
 	SimpleTree(q model.MenuTreeReq) ([]*model.SimpleMenu, *g.Error)
+	TreeByRole(roleID string) ([]*model.SysMenu, *g.Error)
 	Create(req model.MenuCreateReq) error
-	Updates(req model.MenuUpdateReq) *g.Error
+	Save(req model.MenuUpdateReq) *g.Error
 	Delete(id string) *g.Error
 }
 
-type Menu struct{}
+type MenuService struct{}
 
-func (svc Menu) Tree(req model.MenuTreeReq) ([]*model.SysMenu, *g.Error) {
+func (svc *MenuService) Tree(req model.MenuTreeReq) ([]*model.SysMenu, *g.Error) {
 	var menus []*model.SysMenu
 	if err := g.DB.Order("sort").Find(&menus).Error; err != nil {
 		return menus, g.WrapError(err, r.FailRead)
@@ -36,7 +37,7 @@ func (svc Menu) Tree(req model.MenuTreeReq) ([]*model.SysMenu, *g.Error) {
 	return menuTree, nil
 }
 
-func (svc Menu) filterByName(name string, menuTree []*model.SysMenu) []*model.SysMenu {
+func (svc *MenuService) filterByName(name string, menuTree []*model.SysMenu) []*model.SysMenu {
 	var fFn func(n string, t []*model.SysMenu) bool
 	fFn = func(n string, t []*model.SysMenu) bool {
 		for _, m := range t {
@@ -61,7 +62,29 @@ func (svc Menu) filterByName(name string, menuTree []*model.SysMenu) []*model.Sy
 	return mt
 }
 
-func (svc Menu) sliceToTree(list []*model.SysMenu) []*model.SysMenu {
+func (svc *MenuService) TreeByRole(roleID string) ([]*model.SysMenu, *g.Error) {
+	menus := make([]*model.SysMenu, 0)
+	err := g.DB.Transaction(func(tx *gorm.DB) error {
+		roleMenus, gErr := RoleMenuService.findByRoleID(g.DB, roleID)
+		if len(roleMenus) == 0 {
+			return gErr
+		}
+		var menuIDs []string
+		for _, rm := range roleMenus {
+			menuIDs = append(menuIDs, rm.MenuID)
+		}
+		menus, gErr = svc.findByMenuIDs(tx, menuIDs)
+		return gErr
+	})
+	if gErr, ok := err.(*g.Error); ok {
+		return menus, gErr
+	}
+	// menu list -> tree
+	tree := svc.sliceToTree(menus)
+	return tree, nil
+}
+
+func (svc *MenuService) sliceToTree(list []*model.SysMenu) []*model.SysMenu {
 	sp := make(map[string][]*model.SysMenu, len(list))
 	for _, m := range list {
 		cm := m
@@ -77,7 +100,13 @@ func (svc Menu) sliceToTree(list []*model.SysMenu) []*model.SysMenu {
 	return sp[""]
 }
 
-func (svc Menu) SimpleTree(q model.MenuTreeReq) ([]*model.SimpleMenu, *g.Error) {
+func (svc *MenuService) findByMenuIDs(tx *gorm.DB, menuIDs []string) ([]*model.SysMenu, *g.Error) {
+	var menus []*model.SysMenu
+	err := tx.Where("id IN ?", menuIDs).Find(&menus).Error
+	return menus, g.WrapError(err, "获取菜单列表失败")
+}
+
+func (svc *MenuService) SimpleTree(q model.MenuTreeReq) ([]*model.SimpleMenu, *g.Error) {
 	tree, gerr := svc.Tree(q)
 	if gerr != nil {
 		return nil, gerr
@@ -89,7 +118,7 @@ func (svc Menu) SimpleTree(q model.MenuTreeReq) ([]*model.SimpleMenu, *g.Error) 
 	return simpleTree, nil
 }
 
-func (svc Menu) toSimpleTree(tree []*model.SysMenu) []*model.SimpleMenu {
+func (svc *MenuService) toSimpleTree(tree []*model.SysMenu) []*model.SimpleMenu {
 	sms := make([]*model.SimpleMenu, 0)
 	var tt func(t []*model.SysMenu, st []*model.SimpleMenu) []*model.SimpleMenu
 	tt = func(t []*model.SysMenu, st []*model.SimpleMenu) []*model.SimpleMenu {
@@ -106,14 +135,14 @@ func (svc Menu) toSimpleTree(tree []*model.SysMenu) []*model.SimpleMenu {
 	return sms
 }
 
-func (svc Menu) Create(req model.MenuCreateReq) error {
+func (svc *MenuService) Create(req model.MenuCreateReq) error {
 	var m model.SysMenu
 	copier.Copy(&m, &req)
 	err := g.DB.Create(&m).Error
 	return err
 }
 
-func (svc Menu) Updates(req model.MenuUpdateReq) *g.Error {
+func (svc *MenuService) Save(req model.MenuUpdateReq) *g.Error {
 	var m model.SysMenu
 	copier.Copy(&m, &req)
 
@@ -128,7 +157,7 @@ func (svc Menu) Updates(req model.MenuUpdateReq) *g.Error {
 	//	return nil
 	//})
 
-	if res := g.DB.Updates(&m); res.Error != nil {
+	if res := g.DB.Omit("created_at").Save(&m); res.Error != nil {
 		return g.WrapError(res.Error, r.FailUpdate)
 	} else if res.RowsAffected == 0 {
 		return g.WrapError(gorm.ErrRecordNotFound, r.FailRecordNotFound)
@@ -136,7 +165,7 @@ func (svc Menu) Updates(req model.MenuUpdateReq) *g.Error {
 	return nil
 }
 
-func (svc Menu) Delete(ID string) *g.Error {
+func (svc *MenuService) Delete(ID string) *g.Error {
 
 	// 要求：
 	// 1.数据是否存在
@@ -159,8 +188,8 @@ func (svc Menu) Delete(ID string) *g.Error {
 			return g.WrapError(err, "检查是否有子菜单出错")
 		}
 
-		if err := tx.Where(&model.RoleOtmMenu{MenuID: ID}).Delete(&model.RoleOtmMenu{}).Error; err != nil {
-			return g.WrapError(err, "删除角色菜单关联关系失败")
+		if gErr := RoleMenuService.deleteByMenuID(tx, ID); gErr != nil {
+			return gErr
 		}
 
 		if dbMenu.MenuType == enum.MenuType_Btn {
@@ -168,13 +197,11 @@ func (svc Menu) Delete(ID string) *g.Error {
 			//	return errors.WithMessage(err, "移除数据权限")
 			//}
 		}
-		if err := tx.Where("id = ?", ID).Delete(&model.SysMenu{}).Error; err != nil {
-			return g.WrapError(err, r.FailDelete)
-		}
-		return nil
+		err := tx.Where("id = ?", ID).Delete(&model.SysMenu{}).Error
+		return err
 	})
 	if gerr, ok := err.(*g.Error); ok {
 		return gerr
 	}
-	return nil
+	return g.WrapError(err, r.FailDelete)
 }

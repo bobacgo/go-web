@@ -8,8 +8,8 @@ import (
 // SysRole 系统角色
 type SysRole struct {
 	orm.Model
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string `json:"name" gorm:"index,type:varchar(100)"`
+	Description string `json:"description" gorm:"type:varchar(1000)"`
 }
 
 func (SysRole) TableName() string {
@@ -38,14 +38,14 @@ type RoleOtmMenu struct {
 }
 
 type RoleCreateReq struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
+	Name        string   `json:"name" binding:"required,lte=20"`
+	Description string   `json:"description" binding:"lte=300"`
 	MenuIDs     []string `json:"menuIDs"`
 }
 
 type RoleUpdateReq struct {
 	r.IdReq
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
+	Name        string   `json:"name" binding:"required,lte=20"`
+	Description string   `json:"description" binding:"lte=300"`
 	MenuIDs     []string `json:"menuIDs"`
 }

@@ -12,7 +12,7 @@ import (
 
 type UserApi struct{}
 
-var userService service.IUser = new(service.User)
+var userService service.IUserService = new(service.UserService)
 
 func (api UserApi) PageList(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.UserPageQuery](ctx)
@@ -49,20 +49,20 @@ func (api UserApi) Create(ctx *gin.Context) {
 	}
 	if err := userService.Create(req); err != nil {
 		logger.Error(err.Error())
-		reply.FailMsg(ctx, err.Text)
+		reply.FailMsgDetails(ctx, err.Text, err.Misc)
 		return
 	}
 	reply.SuccessCreate(ctx)
 }
 
 func (api UserApi) Update(ctx *gin.Context) {
-	req, ok := valid.ShouldBind[model.SysUser](ctx)
+	req, ok := valid.ShouldBind[model.UserUpdateReq](ctx)
 	if !ok {
 		return
 	}
 	if err := userService.Updates(req); err != nil {
 		logger.Error(err.Error())
-		reply.FailMsg(ctx, err.Text)
+		reply.FailMsgDetails(ctx, err.Text, err.Misc)
 		return
 	}
 	reply.SuccessUpdate(ctx)

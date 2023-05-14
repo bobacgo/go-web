@@ -1,9 +1,7 @@
 package v1
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/gogoclouds/go-web/intermal/app/admin/enum"
 	"github.com/gogoclouds/go-web/intermal/app/admin/model"
 	"github.com/gogoclouds/go-web/intermal/app/admin/service"
 	"github.com/gogoclouds/gogo/logger"
@@ -14,7 +12,7 @@ import (
 
 type MenuApi struct{}
 
-var menuService service.IMenu = new(service.Menu)
+var menuService service.IMenuService = new(service.MenuService)
 
 func (api MenuApi) Tree(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.MenuTreeReq](ctx)
@@ -62,7 +60,7 @@ func (api MenuApi) Update(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := menuService.Updates(req); err != nil {
+	if err := menuService.Save(req); err != nil {
 		logger.Error(err)
 		reply.FailMsg(ctx, err.Text)
 		return
@@ -82,13 +80,4 @@ func (api MenuApi) Delete(ctx *gin.Context) {
 		return
 	}
 	reply.SuccessDelete(ctx)
-}
-
-func (api MenuApi) ParamValid(req model.SysMenu) error {
-	if req.MenuType == enum.MenuType_Btn {
-		if req.Method != "" {
-			return errors.New("菜单按钮对应的HTTP请求方法不能为空")
-		}
-	}
-	return nil
 }

@@ -39,7 +39,7 @@ type MenuTreeReq struct {
 
 type MenuCreateReq struct {
 	ParentId string        `json:"parentId"`
-	Name     string        `json:"name" binding:"required"`
+	Name     string        `json:"name" binding:"required,lte=20"`
 	Path     string        `json:"path" binding:"required_if=MenuType 2"`
 	MenuType enum.MenuType `json:"menuType" binding:"required,oneof=1 2 3"`
 	Method   string        `json:"method" binding:"oneof='' GET POST PUT DELETE"` // net/http/method.go

@@ -1,23 +1,56 @@
-package dao
+package service
 
 import (
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gogoclouds/gogo/g"
+	"github.com/gogoclouds/gogo/logger"
 	"github.com/gogoclouds/gogo/web/r"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
+	"sync"
 )
 
 type ICasbin interface {
-	Casbin() (*casbin.SyncedCachedEnforcer, error)
-	UpdateByMenuID(tx *gorm.DB, menuID string, path string, method string) *g.Error
+	Casbin() *casbin.SyncedCachedEnforcer
 }
 
 type Casbin struct{}
 
-func (dao Casbin) Casbin() (*casbin.SyncedCachedEnforcer, error) {
+var (
+	once                 sync.Once
+	syncedCachedEnforcer *casbin.SyncedCachedEnforcer
+)
+
+func (svc *Casbin) Casbin() *casbin.SyncedCachedEnforcer {
+	once.Do(func() {
+		var err error
+		if syncedCachedEnforcer, err = svc.casbin(); err != nil {
+			logger.Error(err)
+			return
+		}
+	})
+	return syncedCachedEnforcer
+}
+
+func (svc *Casbin) RemoveFilteredPolicy(v int, p ...string) bool {
+	e := svc.Casbin()
+	ok, err := e.RemoveFilteredPolicy(v, p...)
+	if err != nil {
+		logger.Error(err)
+	}
+	return ok
+}
+
+func (svc *Casbin) UpdateCasbinApi(menuID string, path, method string) error {
+	//casbinDao.UpdateByMenuID(menuID, path, method)
+	e := svc.Casbin()
+	err := e.InvalidateCache()
+	return err
+}
+
+func (svc *Casbin) casbin() (*casbin.SyncedCachedEnforcer, error) {
 	a, err := gormadapter.NewAdapterByDB(g.DB)
 	if err != nil {
 		return nil, errors.WithMessage(err, "适配数据库失败请检查casbin表是否为InnoDB引擎!")
@@ -48,7 +81,7 @@ func (dao Casbin) Casbin() (*casbin.SyncedCachedEnforcer, error) {
 	return syncedCachedEnforcer, err
 }
 
-func (dao Casbin) UpdateByMenuID(tx *gorm.DB, menuID, path, method string) *g.Error {
+func (svc *Casbin) UpdateByMenuID(tx *gorm.DB, menuID, path, method string) *g.Error {
 	cr := gormadapter.CasbinRule{
 		V1: path,
 		V2: method,

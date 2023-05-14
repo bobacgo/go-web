@@ -1,70 +1,11 @@
 package app
 
 import (
-	"bytes"
-	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	admin_v1 "github.com/gogoclouds/go-web/api/admin/v1"
-	"github.com/gogoclouds/gogo/logger"
-	"github.com/gogoclouds/gogo/web/r"
-	"io"
 )
 
-type Resp struct {
-	Code r.StatusCode `json:"code"`
-	Msg  string       `json:"msg"`
-}
-
-type RespData[T any] struct {
-	Resp
-	Data T `json:"data"`
-}
-
-type ResponseWriter struct {
-	gin.ResponseWriter
-	body *bytes.Buffer
-}
-
-func (w ResponseWriter) Write(b []byte) (int, error) {
-	w.body.Write(b)
-	return w.ResponseWriter.Write(b)
-}
-
-func (w ResponseWriter) WriteString(s string) (int, error) {
-	w.body.WriteString(s)
-	return w.ResponseWriter.WriteString(s)
-}
-
-// LoggerErrMiddleware 日志记录中间件
-// 1.只对 application/json
-func LoggerErrMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if c.ContentType() != binding.MIMEJSON { // 只输出 application/json
-			c.Next()
-			return
-		}
-		reqBody, _ := c.GetRawData()
-		if len(reqBody) > 0 { // 请求包体写回。
-			c.Request.Body = io.NopCloser(bytes.NewBuffer(reqBody))
-		}
-		blw := &ResponseWriter{body: bytes.NewBufferString(""), ResponseWriter: c.Writer}
-		c.Writer = blw
-		c.Next()
-		rspBody := blw.body.Bytes()
-		var rsp RespData[any]
-		if err := json.Unmarshal(rspBody, &rsp); err != nil {
-			logger.Error(err)
-			return
-		}
-		if rsp.Code != r.Ok {
-			logger.Errorf("\nrequest: %s\nresponse: %s", reqBody, rspBody)
-		}
-	}
-}
-
 func loadRouter(e *gin.Engine) {
-	e.Use(LoggerErrMiddleware())
 	g := e.Group("v1")
 
 	// sys menu
