@@ -37,15 +37,19 @@ type RoleOtmMenu struct {
 	MenuID string `json:"menuId"`
 }
 
+type RolePageListReq struct {
+	r.PageInfo
+	Name string `json:"name"`
+}
+
 type RoleCreateReq struct {
 	Name        string   `json:"name" binding:"required,lte=20"`
 	Description string   `json:"description" binding:"lte=300"`
 	MenuIDs     []string `json:"menuIDs"`
+	UserIDs     []string `json:"userIDs"`
 }
 
 type RoleUpdateReq struct {
 	r.IdReq
-	Name        string   `json:"name" binding:"required,lte=20"`
-	Description string   `json:"description" binding:"lte=300"`
-	MenuIDs     []string `json:"menuIDs"`
+	RoleCreateReq
 }

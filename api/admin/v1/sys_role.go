@@ -15,7 +15,7 @@ type RoleApi struct{}
 var roleService service.IRole = new(service.Role)
 
 func (api RoleApi) PageList(ctx *gin.Context) {
-	req, ok := valid.ShouldBind[model.SysRole](ctx)
+	req, ok := valid.ShouldBind[model.RolePageListReq](ctx)
 	if !ok {
 		return
 	}
@@ -49,7 +49,7 @@ func (api RoleApi) Create(ctx *gin.Context) {
 	}
 	if err := roleService.Create(req); err != nil {
 		logger.Error(err.Error())
-		reply.FailMsg(ctx, err.Text)
+		reply.FailMsgDetails(ctx, err.Text, err.Misc)
 		return
 	}
 	reply.SuccessCreate(ctx)
@@ -62,7 +62,7 @@ func (api RoleApi) Update(ctx *gin.Context) {
 	}
 	if err := roleService.Updates(req); err != nil {
 		logger.Error(err.Error())
-		reply.FailMsg(ctx, err.Text)
+		reply.FailMsgDetails(ctx, err.Text, err.Misc)
 		return
 	}
 	reply.SuccessUpdate(ctx)
