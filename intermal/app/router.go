@@ -27,6 +27,7 @@ func loadRouter(e *gin.Engine) {
 	role.PUT("", roleApi_v1.Update)
 	role.DELETE("", roleApi_v1.Delete)
 	role.POST("pageList", roleApi_v1.PageList)
+	role.POST("list", roleApi_v1.List)
 
 	// sys user
 	userApi_v1 := new(admin_v1.UserApi)

@@ -20,17 +20,22 @@ type SysMenu struct {
 	Method   string        `json:"method" gorm:"type:varchar(10)"` // net/http/method.go
 	Icon     string        `json:"icon" gorm:"type:varchar(255)"`
 	Sort     uint8         `json:"sort"`
+	Roles    []*SysRole    `json:"-" gorm:"many2many:sys_role_sys_menus"`
 	Children []*SysMenu    `json:"children" gorm:"-"`
 }
 
-func (SysMenu) TableName() string {
+func (*SysMenu) TableName() string {
 	return "sys_menus"
 }
 
 type SimpleMenu struct {
 	ID       string        `json:"id"`
 	Name     string        `json:"name"`
-	Children []*SimpleMenu `json:"children"`
+	Children []*SimpleMenu `json:"children" gorm:"-"`
+}
+
+func (*SimpleMenu) TableName() string {
+	return new(SysMenu).TableName()
 }
 
 type MenuTreeReq struct {

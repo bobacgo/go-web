@@ -2,7 +2,6 @@ package service
 
 import (
 	"github.com/gogoclouds/gogo/web/orm"
-	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"strings"
 
@@ -35,6 +34,7 @@ func (svc *UserService) PageList(req model.UserPageQuery) (*r.PageAnyResp, *g.Er
 	// 1.支持 账号名 模糊搜索
 	// 2.支持 手机号 模糊搜索
 	// 3.支持 昵称 模糊搜索
+	// 4.支持通过角色ID查找用户
 
 	type UserInfo struct {
 		model.SysUser
@@ -50,6 +50,9 @@ func (svc *UserService) PageList(req model.UserPageQuery) (*r.PageAnyResp, *g.Er
 	}
 	if req.Nickname != "" {
 		db.Where("nickname LIKE ?", "%"+req.Nickname+"%")
+	}
+	if req.RoleID != "" {
+		db.Where("role_id = ?", req.RoleID)
 	}
 	db.Order("updated_at DESC").Preload("RoleInfo")
 	data, err := orm.PageAnyFind[UserInfo](db, req.PageInfo)
@@ -165,15 +168,6 @@ func (svc *UserService) IsExist(q model.UniqueVerifyReq) (bool, *g.Error) {
 	} else { // 查询出错
 		return true, gerr
 	}
-}
-
-func (svc *UserService) findByID(tx *gorm.DB, id string) (model.SysUser, *g.Error) {
-	var u model.SysUser
-	err := g.DB.Where("id = ?", id).First(&u).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return u, g.WrapError(err, r.FailRecordNotFound)
-	}
-	return u, g.WrapError(err, r.FailRead)
 }
 
 func (svc *UserService) bcrypt() util.Bcrypt {

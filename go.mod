@@ -6,10 +6,9 @@ require (
 	github.com/casbin/casbin/v2 v2.68.0
 	github.com/casbin/gorm-adapter/v3 v3.17.0
 	github.com/gin-gonic/gin v1.9.0
-	github.com/gogoclouds/gogo v0.0.6
+	github.com/gogoclouds/gogo v0.0.7
 	github.com/jinzhu/copier v0.3.5
 	github.com/pkg/errors v0.9.1
-	gorm.io/datatypes v1.2.0
 	gorm.io/gorm v1.25.0
 )
 

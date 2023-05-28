@@ -14,7 +14,7 @@ type RoleApi struct{}
 
 var roleService service.IRole = new(service.Role)
 
-func (api RoleApi) PageList(ctx *gin.Context) {
+func (api *RoleApi) PageList(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.RolePageListReq](ctx)
 	if !ok {
 		return
@@ -28,7 +28,21 @@ func (api RoleApi) PageList(ctx *gin.Context) {
 	reply.SuccessRead(ctx, pageResp)
 }
 
-func (api RoleApi) Details(ctx *gin.Context) {
+func (api *RoleApi) List(ctx *gin.Context) {
+	req, ok := valid.ShouldBind[model.RoleListReq](ctx)
+	if !ok {
+		return
+	}
+	list, err := roleService.List(req)
+	if err != nil {
+		logger.Error(err.Error())
+		reply.FailMsg(ctx, err.Text)
+		return
+	}
+	reply.SuccessRead(ctx, list)
+}
+
+func (api *RoleApi) Details(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[r.IdReq](ctx)
 	if !ok {
 		return
@@ -42,7 +56,7 @@ func (api RoleApi) Details(ctx *gin.Context) {
 	reply.SuccessRead(ctx, user)
 }
 
-func (api RoleApi) Create(ctx *gin.Context) {
+func (api *RoleApi) Create(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.RoleCreateReq](ctx)
 	if !ok {
 		return
@@ -55,7 +69,7 @@ func (api RoleApi) Create(ctx *gin.Context) {
 	reply.SuccessCreate(ctx)
 }
 
-func (api RoleApi) Update(ctx *gin.Context) {
+func (api *RoleApi) Update(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.RoleUpdateReq](ctx)
 	if !ok {
 		return
@@ -69,7 +83,7 @@ func (api RoleApi) Update(ctx *gin.Context) {
 	return
 }
 
-func (api RoleApi) Delete(ctx *gin.Context) {
+func (api *RoleApi) Delete(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[r.IdReq](ctx)
 	if !ok {
 		return

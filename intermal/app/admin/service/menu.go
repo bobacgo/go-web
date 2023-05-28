@@ -4,6 +4,7 @@ import (
 	"github.com/gogoclouds/go-web/intermal/app/admin/enum"
 	"github.com/gogoclouds/go-web/intermal/app/admin/model"
 	"github.com/gogoclouds/gogo/g"
+	"github.com/gogoclouds/gogo/web/orm"
 	"github.com/gogoclouds/gogo/web/r"
 	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
@@ -64,22 +65,15 @@ func (svc *MenuService) filterByName(name string, menuTree []*model.SysMenu) []*
 
 func (svc *MenuService) TreeByRole(roleID string) ([]*model.SysMenu, *g.Error) {
 	menus := make([]*model.SysMenu, 0)
-	err := g.DB.Transaction(func(tx *gorm.DB) error {
-		roleMenus, gErr := RoleMenuService.findByRoleID(g.DB, roleID)
-		if len(roleMenus) == 0 {
-			return gErr
-		}
-		var menuIDs []string
-		for _, rm := range roleMenus {
-			menuIDs = append(menuIDs, rm.MenuID)
-		}
-		menus, gErr = svc.findByMenuIDs(tx, menuIDs)
-		return gErr
-	})
-	if gErr, ok := err.(*g.Error); ok {
-		return menus, gErr
+	if roleID == "" {
+		return menus, nil
 	}
-	// menu list -> tree
+
+	// select * from sys_menus join sys_role_sys_menus on sys_role_sys_menus.sys_menu_id = sys_menus.id and sys_role_sys_menus.sys_role_id = 'xxx' where sys_menus.deleted_at IS NULL order by sys_menus.sort
+	if err := g.DB.Model(&model.SysRole{Model: orm.Model{ID: roleID}}).Order("sys_menus.sort").
+		Association("Menus").Find(&menus); err != nil {
+		return menus, g.WrapError(err, "获取角色下菜单出错")
+	}
 	tree := svc.sliceToTree(menus)
 	return tree, nil
 }
@@ -187,9 +181,9 @@ func (svc *MenuService) Delete(ID string) *g.Error {
 		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return g.WrapError(err, "检查是否有子菜单出错")
 		}
-
-		if gErr := RoleMenuService.deleteByMenuID(tx, ID); gErr != nil {
-			return gErr
+		// DELETE FROM `sys_role_sys_menus` WHERE `sys_role_sys_menus`.`sys_menu_id` = 'cb132eed8e424bd690e0ddf4939f3162'
+		if err := tx.Model(&model.SysMenu{Model: orm.Model{ID: ID}}).Association("Roles").Clear(); err != nil {
+			return g.WrapError(err, "菜单关系出错")
 		}
 
 		if dbMenu.MenuType == enum.MenuType_Btn {

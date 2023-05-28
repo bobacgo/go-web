@@ -8,11 +8,12 @@ import (
 // SysRole 系统角色
 type SysRole struct {
 	orm.Model
-	Name        string `json:"name" gorm:"index,type:varchar(100)"`
-	Description string `json:"description" gorm:"type:varchar(1000)"`
+	Name        string     `json:"name" gorm:"type:varchar(100);index"`
+	Description string     `json:"description" gorm:"type:varchar(1000)"`
+	Menus       []*SysMenu `json:"menus" gorm:"many2many:sys_role_sys_menus"`
 }
 
-func (SysRole) TableName() string {
+func (*SysRole) TableName() string {
 	return "sys_roles"
 }
 
@@ -21,20 +22,8 @@ type SimpleRole struct {
 	Name string `json:"name" gorm:"type:varchar(100)"`
 }
 
-func (SimpleRole) TableName() string {
-	return SysRole{}.TableName()
-}
-
-// RoleOtmUser 角色用户关联(一对多)
-type RoleOtmUser struct {
-	RoleID string `json:"roleId"`
-	UserID string `json:"userId"`
-}
-
-// RoleOtmMenu 角色菜单关联(一对多)
-type RoleOtmMenu struct {
-	RoleID string `json:"roleId"`
-	MenuID string `json:"menuId"`
+func (*SimpleRole) TableName() string {
+	return new(SysRole).TableName()
 }
 
 type RolePageListReq struct {
@@ -42,11 +31,13 @@ type RolePageListReq struct {
 	Name string `json:"name"`
 }
 
+type RoleListReq struct {
+	Name string `json:"name"`
+}
 type RoleCreateReq struct {
-	Name        string   `json:"name" binding:"required,lte=20"`
-	Description string   `json:"description" binding:"lte=300"`
-	MenuIDs     []string `json:"menuIDs"`
-	UserIDs     []string `json:"userIDs"`
+	Name        string     `json:"name" binding:"required,lte=20"`
+	Description string     `json:"description" binding:"lte=300"`
+	Menus       []*r.IdReq `json:"menus" gorm:"many2many:sys_role_sys_menus"`
 }
 
 type RoleUpdateReq struct {
