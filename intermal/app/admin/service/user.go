@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/gogoclouds/gogo/web/orm"
+	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"strings"
 
@@ -22,6 +23,8 @@ type IUserService interface {
 	UpdatePassword(req model.UserUpdatePasswdReq) *g.Error
 	Delete(ID string) *g.Error
 }
+
+var userService = new(UserService)
 
 type UserService struct {
 	g.FindByIDService[model.SysUser]
@@ -61,6 +64,15 @@ func (svc *UserService) PageList(req model.UserPageQuery) (*r.PageAnyResp, *g.Er
 
 func (svc *UserService) Details(id string) (model.SysUser, *g.Error) {
 	return svc.FindByID(g.DB, id)
+}
+
+func (svc *UserService) findByUsername(tx *gorm.DB, username string) (model.SysUser, *g.Error) {
+	var u model.SysUser
+	err := tx.Where(&model.SysUser{Username: username}).First(&u).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return u, g.NewError("用户" + r.FailRecordNotFound)
+	}
+	return u, g.WrapError(err, "获取用户数据出错")
 }
 
 func (svc *UserService) Create(q model.UserCreateReq) *g.Error {
