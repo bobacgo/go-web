@@ -9,7 +9,7 @@ import (
 
 type SystemApi struct{}
 
-var systemService service.ISystem = new(service.System)
+var systemService service.ISystem = new(service.SystemService)
 
 func (api *SystemApi) Captcha(c *gin.Context) {
 	rsp, gErr := systemService.CaptchaV2()

@@ -215,7 +215,7 @@ func (h *passwdHandler) bcryptHash(passwd string) string {
 }
 
 func (h *passwdHandler) errCount(userID string) {
-	count, err := g.CacheDB.Incr(context.Background(), h.errCountKey(userID)).Result()
+	count, err := g.CacheDB.Incr(context.Background(), h.key(userID)).Result()
 	if err != nil {
 		logger.Error(userID, err)
 	}
@@ -230,11 +230,11 @@ func (h *passwdHandler) errCount(userID string) {
 }
 
 func (h *passwdHandler) delErrIncr(userID string) {
-	if err := g.CacheDB.Del(context.Background(), h.errCountKey(userID)).Err(); err != nil {
+	if err := g.CacheDB.Del(context.Background(), h.key(userID)).Err(); err != nil {
 		logger.Error(userID, err)
 	}
 }
 
-func (h *passwdHandler) errCountKey(userID string) string {
+func (h *passwdHandler) key(userID string) string {
 	return fmt.Sprintf(common.RedisKeyPasswdErrIncrFmt, userID)
 }

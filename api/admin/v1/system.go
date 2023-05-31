@@ -13,7 +13,7 @@ import (
 
 type SystemApi struct{}
 
-var systemService service.ISystem = new(service.System)
+var systemService service.ISystem = new(service.SystemService)
 
 func (api *SystemApi) Login(c *gin.Context) {
 	req, ok := valid.ShouldBind[model.LoginReq](c)
