@@ -23,11 +23,11 @@ type ISystem interface {
 
 var menuService IMenuService = new(MenuService)
 
-type System struct{}
+type SystemService struct{}
 
 var ErrUserDisable = errors.New("用户被禁用")
 
-func (s *System) Login(q model.LoginReq) ([]*model.SysMenu, *g.Error) {
+func (svc *SystemService) Login(q model.LoginReq) ([]*model.SysMenu, *g.Error) {
 
 	// 要求
 	// 1.校验验证码
@@ -41,29 +41,30 @@ func (s *System) Login(q model.LoginReq) ([]*model.SysMenu, *g.Error) {
 	}
 	user, gErr := userService.findByUsername(g.DB, q.Username)
 	if gErr != nil {
-		logger.Errorf("[%s] %v", q.Username, gErr.Error())
 		return nil, g.NewError("用户名或密码错误")
 	}
 	if user.Status == enum.UserStatusDisable {
 		return nil, g.WrapError(ErrUserDisable, "账号处于封禁状态")
 	}
-	//up := strings.SplitN(user.Password, "$", 1)
+	if !passwordHandler.bcryptVerify(user.ID, q.Password, user.Password) {
+		return nil, g.NewError("用户名或密码错误")
+	}
 	tree, gErr := menuService.TreeByRole("a70e443047f0403094d406b5a3c78880")
 	return tree, gErr
 }
 
-func (s *System) Logout() {
+func (svc *SystemService) Logout() {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (s *System) Captcha() (rsp model.CaptchaResponse, err error) {
+func (svc *SystemService) Captcha() (rsp model.CaptchaResponse, err error) {
 	capt := base64Captcha.NewCaptcha(base64Captcha.DefaultDriverDigit, captchaStore)
 	rsp.CaptchaKey, rsp.ImgBase64, err = capt.Generate()
 	return
 }
 
-func (s *System) CaptchaV2() (model.CaptchaV2Response, *g.Error) {
+func (svc *SystemService) CaptchaV2() (model.CaptchaV2Response, *g.Error) {
 	// 生成验证码
 	var (
 		rsp model.CaptchaV2Response

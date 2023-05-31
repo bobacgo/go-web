@@ -1,6 +1,11 @@
 package service
 
 import (
+	"context"
+	"fmt"
+	"github.com/gogoclouds/go-web/intermal/common"
+	"github.com/gogoclouds/gogo/logger"
+	"github.com/gogoclouds/gogo/pkg/util"
 	"github.com/gogoclouds/gogo/web/orm"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
@@ -9,7 +14,6 @@ import (
 	"github.com/gogoclouds/go-web/intermal/app/admin/enum"
 	"github.com/gogoclouds/go-web/intermal/app/admin/model"
 	"github.com/gogoclouds/gogo/g"
-	"github.com/gogoclouds/gogo/pkg/util"
 	"github.com/gogoclouds/gogo/web/r"
 	"github.com/jinzhu/copier"
 )
@@ -81,7 +85,7 @@ func (svc *UserService) Create(q model.UserCreateReq) *g.Error {
 
 	u.Username = strings.Trim(u.Username, " ")
 	u.Nickname = strings.Trim(u.Nickname, " ")
-	u.Password = svc.bcrypt().Hash(q.Password)
+	u.Password = passwordHandler.bcryptHash(q.Password)
 	u.Status = enum.UserStatusEnable
 
 	// 要求
@@ -142,6 +146,7 @@ func (svc *UserService) UpdateStatus(req model.UserUpdateStatusReq) *g.Error {
 	} else if res.RowsAffected == 0 {
 		return g.NewError(r.FailRecordNotFound)
 	}
+	// TODO 退出 token
 	return nil
 }
 
@@ -151,13 +156,13 @@ func (svc *UserService) UpdatePassword(req model.UserUpdatePasswdReq) *g.Error {
 		return gerr
 	}
 
-	bcrypt := svc.bcrypt()
-	if !bcrypt.Check(u.Password, req.OldPassword) {
+	if !passwordHandler.bcryptVerify(u.ID, req.OldPassword, u.Password) {
 		return g.NewError("旧密码验证不通过")
 	}
 
-	password := bcrypt.Hash(req.NewPassword)
+	password := passwordHandler.bcryptHash(req.NewPassword)
 	err := g.DB.Model(&model.SysUser{}).Where("id = ?", req.ID).Update("password", password).Error
+	// TODO 退出 token
 	return g.WrapError(err, r.FailUpdate)
 }
 
@@ -182,8 +187,54 @@ func (svc *UserService) IsExist(q model.UniqueVerifyReq) (bool, *g.Error) {
 	}
 }
 
-func (svc *UserService) bcrypt() util.Bcrypt {
-	serviceKV := g.Conf.AppServiceKV()
-	bcrypt := util.NewBcrypt(serviceKV["salt"].(string))
-	return bcrypt
+// ===============================================
+// Password handler
+// ===============================================
+
+var passwordHandler = new(passwdHandler)
+
+type passwdHandler struct{}
+
+func (h *passwdHandler) bcryptVerify(userID, password, dbPassword string) bool {
+	up := strings.SplitN(dbPassword, "$", 2)
+	if len(up) != 2 {
+		logger.Errorf("password splitN len %d", len(up))
+		return false
+	}
+	if !util.BcryptVerify(up[0], up[1], password) {
+		h.errCount(userID)
+		return false
+	}
+	h.delErrIncr(userID)
+	return true
+}
+
+func (h *passwdHandler) bcryptHash(passwd string) string {
+	hash, salt := util.BcryptHash(passwd)
+	return salt + hash
+}
+
+func (h *passwdHandler) errCount(userID string) {
+	count, err := g.CacheDB.Incr(context.Background(), h.errCountKey(userID)).Result()
+	if err != nil {
+		logger.Error(userID, err)
+	}
+	if count > 5 {
+		if err := userService.UpdateStatus(model.UserUpdateStatusReq{
+			IdReq: r.IdReq{ID: userID}, Status: enum.UserStatusDisable,
+		}); err != nil {
+			logger.Errorf("disable user [%s] err: %v", userID, err)
+		}
+		h.delErrIncr(userID)
+	}
+}
+
+func (h *passwdHandler) delErrIncr(userID string) {
+	if err := g.CacheDB.Del(context.Background(), h.errCountKey(userID)).Err(); err != nil {
+		logger.Error(userID, err)
+	}
+}
+
+func (h *passwdHandler) errCountKey(userID string) string {
+	return fmt.Sprintf(common.RedisKeyPasswdErrIncrFmt, userID)
 }
