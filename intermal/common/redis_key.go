@@ -6,4 +6,5 @@ package common
 const (
 	RedisKeyCaptchaFmt       = "admin:captcha:%s:string"
 	RedisKeyPasswdErrIncrFmt = "admin:passwdErrIncr:%s:string"
+	RedisKeyJwt              = "admin:token:%s:string"
 )

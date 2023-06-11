@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gogoclouds/go-web/intermal/app/admin/model"
 	"github.com/gogoclouds/go-web/intermal/app/admin/service"
+	"github.com/gogoclouds/go-web/intermal/util"
 	"github.com/gogoclouds/gogo/logger"
 	"github.com/gogoclouds/gogo/web/gin/reply"
 	"github.com/gogoclouds/gogo/web/gin/valid"
@@ -20,7 +21,7 @@ func (api *SystemApi) Login(c *gin.Context) {
 	if !ok {
 		return
 	}
-	tree, gErr := systemService.Login(req)
+	resp, gErr := systemService.Login(req)
 	if gErr != nil {
 		logger.Error(gErr.Error())
 		if gErr.Is(service.ErrUserDisable) {
@@ -30,13 +31,17 @@ func (api *SystemApi) Login(c *gin.Context) {
 		}
 		return
 	}
-	reply.SuccessMsgData(c, "登录成功", model.LoginRsp{
-		Menus: tree,
-	})
+	reply.SuccessMsgData(c, "登录成功", resp)
 }
 
 func (api *SystemApi) Logout(c *gin.Context) {
-	systemService.Logout()
+	err := systemService.Logout(util.ContextUsername(c))
+	if err != nil {
+		logger.Error(err)
+		reply.FailMsg(c, "退出登录失败")
+		return
+	}
+	reply.SuccessMsg(c, "退出登录失败")
 }
 
 func (api *SystemApi) Captcha(c *gin.Context) {
@@ -47,6 +52,20 @@ func (api *SystemApi) Captcha(c *gin.Context) {
 		return
 	}
 	reply.SuccessRead(c, captchaRsp)
+}
+
+func (api *SystemApi) Refresh(c *gin.Context) {
+	req, ok := valid.ShouldBind[model.RefreshTokenVo](c)
+	if !ok {
+		return
+	}
+	res, err := systemService.Refresh(req)
+	if err != nil {
+		logger.Error(err)
+		reply.FailMsg(c, "更新令牌失败")
+		return
+	}
+	reply.SuccessData(c, res)
 }
 
 func (api *SystemApi) Upload(c *gin.Context) {

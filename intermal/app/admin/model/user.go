@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/golang-jwt/jwt"
 	"time"
 
 	"github.com/gogoclouds/go-web/intermal/common"
@@ -43,6 +44,20 @@ type SimpleUser struct {
 
 func (*SimpleUser) TableName() string {
 	return new(SysUser).TableName()
+}
+
+type Claims struct {
+	jwt.StandardClaims
+	UserID   string `json:"userID"`
+	Username string `json:"username"`
+	Nickname string `json:"nickname"`
+	Phone    string `json:"phone"` // 手机号
+	RoleID   string `json:"roleId"`
+}
+
+type UserWithRole struct {
+	SysUser
+	RoleInfo SimpleRole `json:"roleInfo" gorm:"foreignKey:RoleID;references:ID"`
 }
 
 type UniqueVerifyReq struct {

@@ -15,8 +15,9 @@ import (
 )
 
 type ISystem interface {
-	Login(q model.LoginReq) ([]*model.SysMenu, *g.Error)
-	Logout()
+	Login(q model.LoginReq) (*model.LoginRsp, *g.Error)
+	Refresh(q model.RefreshTokenVo) (model.RefreshTokenVo, error)
+	Logout(username string) error
 	Captcha() (model.CaptchaResponse, error)
 	CaptchaV2() (model.CaptchaV2Response, *g.Error)
 }
@@ -27,7 +28,7 @@ type SystemService struct{}
 
 var ErrUserDisable = errors.New("用户被禁用")
 
-func (svc *SystemService) Login(q model.LoginReq) ([]*model.SysMenu, *g.Error) {
+func (svc *SystemService) Login(q model.LoginReq) (*model.LoginRsp, *g.Error) {
 
 	// 要求
 	// 1.校验验证码
@@ -39,7 +40,7 @@ func (svc *SystemService) Login(q model.LoginReq) ([]*model.SysMenu, *g.Error) {
 	if !captchaStore.Verify(q.CaptchaKey, q.CaptchaCode, true) {
 		return nil, g.NewError("验证码不正确")
 	}
-	user, gErr := userService.findByUsername(g.DB, q.Username)
+	user, gErr := userService.findWithRoleByUsername(g.DB, q.Username)
 	if gErr != nil {
 		return nil, g.NewError("用户名或密码错误")
 	}
@@ -49,13 +50,34 @@ func (svc *SystemService) Login(q model.LoginReq) ([]*model.SysMenu, *g.Error) {
 	if !passwordHandler.bcryptVerify(user.ID, q.Password, user.Password) {
 		return nil, g.NewError("用户名或密码错误")
 	}
-	tree, gErr := menuService.TreeByRole("a70e443047f0403094d406b5a3c78880")
-	return tree, gErr
+
+	at, rt, err := jwtService.Generate(user.SysUser)
+	if err != nil {
+		return nil, g.WrapError(err, "登录出错")
+	}
+
+	tree, gErr := menuService.TreeByRole(user.RoleID)
+	rsp := model.LoginRsp{
+		User:   user,
+		AToken: at,
+		RToken: rt,
+		Menus:  tree,
+	}
+	return &rsp, gErr
 }
 
-func (svc *SystemService) Logout() {
-	//TODO implement me
-	panic("implement me")
+func (svc *SystemService) Refresh(q model.RefreshTokenVo) (model.RefreshTokenVo, error) {
+	at, rt, err := jwtService.Refresh(q.AToken, q.RToken)
+	vo := model.RefreshTokenVo{
+		AToken: at,
+		RToken: rt,
+	}
+	return vo, err
+}
+
+func (svc *SystemService) Logout(username string) error {
+	err := jwtService.Remove(username)
+	return err
 }
 
 func (svc *SystemService) Captcha() (rsp model.CaptchaResponse, err error) {

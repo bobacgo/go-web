@@ -4,11 +4,17 @@ import (
 	"github.com/gin-gonic/gin"
 	admin_v1 "github.com/gogoclouds/go-web/api/admin/v1"
 	admin_v2 "github.com/gogoclouds/go-web/api/admin/v2"
+	"github.com/gogoclouds/go-web/intermal/middleware"
 )
 
 func loadRouter(e *gin.Engine) {
+	e.MaxMultipartMemory = 300 << 20 //MB
+
+	noAuth := e.Group("v1")
+
 	v1 := e.Group("v1")
-	v2 := e.Group("v2")
+	v1.Use(middleware.JWTAuth())
+	//v2 := e.Group("v2")
 
 	// sys menu
 	menuApi_v1 := new(admin_v1.MenuApi)
@@ -48,16 +54,19 @@ func loadRouter(e *gin.Engine) {
 	systemApi_v1 := new(admin_v1.SystemApi)
 
 	system := v1.Group("system")
-	system.POST("login", systemApi_v1.Login)
+	systemNoAuth := noAuth.Group("system")
+
+	systemNoAuth.POST("login", systemApi_v1.Login)
+	systemNoAuth.GET("captcha", systemApi_v1.Captcha)
+	systemNoAuth.POST("refreshToken", systemApi_v1.Refresh)
 	system.GET("logout", systemApi_v1.Logout)
-	system.GET("captcha", systemApi_v1.Captcha)
 	system.POST("upload", systemApi_v1.Upload)
 
 	// system v2
 	systemApi_v2 := new(admin_v2.SystemApi)
 
-	systemV2 := v2.Group("system")
-	systemV2.GET("captcha", systemApi_v2.Captcha)
+	//systemV2 := v2.Group("system")
+	noAuth.GET("captcha", systemApi_v2.Captcha)
 
 	// sys dictionary
 }

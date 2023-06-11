@@ -11,5 +11,4 @@ app:
   # 服务需要加载的配置文件
   configFileNames: ['common.yaml', 'mysql.yaml', 'redis.yaml']
   serviceKV: # 应用的业务自定义配置
-    authenticationKey: xxx-xxx-xx
-    salt: gogo@123
+    authenticationKey: GIBRuY&HeB!oQ2NLEe

@@ -19,7 +19,7 @@ import (
 )
 
 type IUserService interface {
-	PageList(req model.UserPageQuery) (*r.PageAnyResp, *g.Error)
+	PageList(req model.UserPageQuery) (*r.PageResp[model.UserWithRole], *g.Error)
 	Details(id string) (model.SysUser, *g.Error)
 	Create(req model.UserCreateReq) *g.Error
 	Updates(q model.UserUpdateReq) *g.Error
@@ -35,18 +35,13 @@ type UserService struct {
 	g.UniqueService[model.SysUser]
 }
 
-func (svc *UserService) PageList(req model.UserPageQuery) (*r.PageAnyResp, *g.Error) {
+func (svc *UserService) PageList(req model.UserPageQuery) (*r.PageResp[model.UserWithRole], *g.Error) {
 
 	// 要求
 	// 1.支持 账号名 模糊搜索
 	// 2.支持 手机号 模糊搜索
 	// 3.支持 昵称 模糊搜索
 	// 4.支持通过角色ID查找用户
-
-	type UserInfo struct {
-		model.SysUser
-		RoleInfo model.SimpleRole `json:"roleInfo" gorm:"foreignKey:RoleID;references:ID"`
-	}
 
 	db := g.DB.Model(&model.SysUser{})
 	if req.Username != "" {
@@ -62,7 +57,7 @@ func (svc *UserService) PageList(req model.UserPageQuery) (*r.PageAnyResp, *g.Er
 		db.Where("role_id = ?", req.RoleID)
 	}
 	db.Order("updated_at DESC").Preload("RoleInfo")
-	data, err := orm.PageAnyFind[UserInfo](db, req.PageInfo)
+	data, err := orm.PageFind[model.UserWithRole](db, req.PageInfo)
 	return data, g.WrapError(err, r.FailRead)
 }
 
@@ -70,9 +65,12 @@ func (svc *UserService) Details(id string) (model.SysUser, *g.Error) {
 	return svc.FindByID(g.DB, id)
 }
 
-func (svc *UserService) findByUsername(tx *gorm.DB, username string) (model.SysUser, *g.Error) {
-	var u model.SysUser
-	err := tx.Where(&model.SysUser{Username: username}).First(&u).Error
+func (svc *UserService) findWithRoleByUsername(tx *gorm.DB, username string) (model.UserWithRole, *g.Error) {
+	var u model.UserWithRole
+	err := tx.Model(&model.SysUser{}).
+		Where(&model.SysUser{Username: username}).
+		Preload("RoleInfo").
+		First(&u).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return u, g.NewError("用户" + r.FailRecordNotFound)
 	}
@@ -131,6 +129,9 @@ func (svc *UserService) Updates(q model.UserUpdateReq) *g.Error {
 		}
 		copier.Copy(&u, &q)
 		err := tx.Omit("created_at").Save(&u).Error
+		if err = jwtService.Remove(u.Username); err != nil {
+			return g.WrapError(err, "退出登录失败")
+		}
 		return err
 	})
 	if gerr, ok := err.(*g.Error); ok {
@@ -140,14 +141,24 @@ func (svc *UserService) Updates(q model.UserUpdateReq) *g.Error {
 }
 
 func (svc *UserService) UpdateStatus(req model.UserUpdateStatusReq) *g.Error {
-	res := g.DB.Model(&model.SysUser{}).Where("id = ?", req.ID).Update("status", req.Status)
-	if res.Error != nil {
-		return g.WrapError(res.Error, r.FailUpdate)
-	} else if res.RowsAffected == 0 {
-		return g.NewError(r.FailRecordNotFound)
+	err := g.DB.Transaction(func(tx *gorm.DB) error {
+		u, err := svc.FindByID(g.DB, req.ID)
+		if err != nil {
+			return g.WrapError(err, r.FailRecordNotFound)
+		}
+		res := g.DB.Model(&model.SysUser{}).Where("id = ?", req.ID).Update("status", req.Status)
+		if res.Error != nil {
+			return g.WrapError(res.Error, r.FailUpdate)
+		}
+		if err := jwtService.Remove(u.Username); err != nil {
+			return g.WrapError(err, "退出登录失败")
+		}
+		return nil
+	})
+	if gerr, ok := err.(*g.Error); ok {
+		return gerr
 	}
-	// TODO 退出 token
-	return nil
+	return g.WrapError(err, r.FailUpdate)
 }
 
 func (svc *UserService) UpdatePassword(req model.UserUpdatePasswdReq) *g.Error {
@@ -162,7 +173,9 @@ func (svc *UserService) UpdatePassword(req model.UserUpdatePasswdReq) *g.Error {
 
 	password := passwordHandler.bcryptHash(req.NewPassword)
 	err := g.DB.Model(&model.SysUser{}).Where("id = ?", req.ID).Update("password", password).Error
-	// TODO 退出 token
+	if err := jwtService.Remove(u.Username); err != nil {
+		logger.Errorf("修改密码，移除Token失败：%v", err)
+	}
 	return g.WrapError(err, r.FailUpdate)
 }
 
@@ -195,13 +208,9 @@ var passwordHandler = new(passwdHandler)
 
 type passwdHandler struct{}
 
-func (h *passwdHandler) bcryptVerify(userID, password, dbPassword string) bool {
-	up := strings.SplitN(dbPassword, "$", 2)
-	if len(up) != 2 {
-		logger.Errorf("password splitN len %d", len(up))
-		return false
-	}
-	if !util.BcryptVerify(up[0], up[1], password) {
+func (h *passwdHandler) bcryptVerify(userID, hash, password string) bool {
+	idx := strings.LastIndex(password, "$")
+	if !util.BcryptVerify(password[idx+1:], password[:idx], hash) {
 		h.errCount(userID)
 		return false
 	}
@@ -211,7 +220,7 @@ func (h *passwdHandler) bcryptVerify(userID, password, dbPassword string) bool {
 
 func (h *passwdHandler) bcryptHash(passwd string) string {
 	hash, salt := util.BcryptHash(passwd)
-	return salt + hash
+	return hash + "$" + salt
 }
 
 func (h *passwdHandler) errCount(userID string) {

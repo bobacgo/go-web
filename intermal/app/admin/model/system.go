@@ -1,6 +1,8 @@
 package model
 
-import "github.com/wenlng/go-captcha/captcha"
+import (
+	"github.com/wenlng/go-captcha/captcha"
+)
 
 // LoginReq 登录请求
 // 1.username + password
@@ -15,9 +17,15 @@ type LoginReq struct {
 }
 
 type LoginRsp struct {
-	SysUser
-	RoleInfo SimpleRole `json:"roleInfo"`
-	Menus    []*SysMenu `json:"menus"`
+	User   UserWithRole `json:"user"`
+	AToken string       `json:"aToken"`
+	RToken string       `json:"rToken"`
+	Menus  []*SysMenu   `json:"menus"`
+}
+
+type RefreshTokenVo struct {
+	AToken string `json:"aToken"`
+	RToken string `json:"rToken"`
 }
 
 // =========================================
