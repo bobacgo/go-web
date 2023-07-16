@@ -1,0 +1,27 @@
+pipeline {
+  agent any
+  environment {
+    REGISTRY = "registry.cn-hangzhou.aliyuncs.com"
+    SERVICE = "go-web"
+  }
+  stages {
+    stage('docker login') {
+      steps {
+        echo "--------------- docker login -----------------"
+        sh "docker login -u aliyun2879078242 -p xxx https://${REGISTRY}"
+      }
+    }
+    stage('docker build') {
+      steps {
+         echo "--------------- docker login -----------------"
+         sh "docker build -f build/Dockerfile -t ${REGISTRY}/gogoclouds/${SERVICE}:\${version}.\${branch} ."
+      }
+    }
+    stage('docker pull') {
+      steps {
+        echo "--------------- docker pull -----------------"
+        sh "docker pull ${REGISTRY}/gogoclouds/${SERVICE}:\${version}.\${branch}"
+      }
+    }
+  }
+}

@@ -41,7 +41,7 @@ func (api *SystemApi) Logout(c *gin.Context) {
 		reply.FailMsg(c, "退出登录失败")
 		return
 	}
-	reply.SuccessMsg(c, "退出登录失败")
+	reply.SuccessMsg(c, "退出登录成功")
 }
 
 func (api *SystemApi) Captcha(c *gin.Context) {
