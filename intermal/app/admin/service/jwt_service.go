@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/gogoclouds/go-web/intermal/app/admin/model"
 	"github.com/gogoclouds/go-web/intermal/common"
-	"github.com/gogoclouds/go-web/intermal/util"
+	"github.com/gogoclouds/go-web/pkg/util"
 	"github.com/gogoclouds/gogo/g"
 	"time"
 )

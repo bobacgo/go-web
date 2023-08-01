@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type IRole interface {
+type IRoleService interface {
 	PageList(q model.RolePageListReq) (*r.PageResp[model.SysRole], *g.Error)
 	List(q model.RoleListReq) ([]model.SimpleRole, *g.Error)
 	Details(id string) (model.SysRole, *g.Error)
@@ -19,16 +19,23 @@ type IRole interface {
 	Delete(id string) *g.Error
 }
 
-type Role struct {
+type roleService struct {
 	g.FindByIDService[model.SysRole]
 	g.UniqueService[model.SysRole]
+	db *gorm.DB
 }
 
-func (svc *Role) PageList(q model.RolePageListReq) (*r.PageResp[model.SysRole], *g.Error) {
+func NewRoleService(db *gorm.DB) IRoleService {
+	return &roleService{
+		db: db,
+	}
+}
+
+func (svc *roleService) PageList(q model.RolePageListReq) (*r.PageResp[model.SysRole], *g.Error) {
 
 	// 要求
 	// 1.name 模糊搜索
-	db := g.DB.Model(&model.SysRole{})
+	db := svc.db.Model(&model.SysRole{})
 	if q.Name != "" {
 		db.Where("name LIKE ?", q.Name)
 	}
@@ -37,11 +44,11 @@ func (svc *Role) PageList(q model.RolePageListReq) (*r.PageResp[model.SysRole], 
 	return pageData, g.WrapError(err, r.FailRead)
 }
 
-func (svc *Role) List(q model.RoleListReq) ([]model.SimpleRole, *g.Error) {
+func (svc *roleService) List(q model.RoleListReq) ([]model.SimpleRole, *g.Error) {
 
 	// 要求
 	// 1.name 模糊搜索
-	db := g.DB.Model(&model.SysRole{})
+	db := svc.db.Model(&model.SysRole{})
 	if q.Name != "" {
 		db.Where("name LIKE ?", q.Name)
 	}
@@ -50,9 +57,9 @@ func (svc *Role) List(q model.RoleListReq) ([]model.SimpleRole, *g.Error) {
 	return pageData.List, g.WrapError(err, r.FailRead)
 }
 
-func (svc *Role) Details(id string) (model.SysRole, *g.Error) {
+func (svc *roleService) Details(id string) (model.SysRole, *g.Error) {
 	var role model.SysRole
-	if err := g.DB.Model(model.SysRole{}).Where("id = ?", id).
+	if err := svc.db.Model(model.SysRole{}).Where("id = ?", id).
 		Preload("Menus").
 		First(&role).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -63,13 +70,13 @@ func (svc *Role) Details(id string) (model.SysRole, *g.Error) {
 	return role, nil
 }
 
-func (svc *Role) Create(q model.RoleCreateReq) *g.Error {
+func (svc *roleService) Create(q model.RoleCreateReq) *g.Error {
 
 	// 要求
 	// 1.name 不能重复
 	// 2.角色菜单关联关系数据写入
 
-	err := g.DB.Transaction(func(tx *gorm.DB) error {
+	err := svc.db.Transaction(func(tx *gorm.DB) error {
 		m := map[string]any{"name": q.Name}
 		if gErr := svc.UniqueService.Verify(tx, m); gErr != nil {
 			return gErr
@@ -87,12 +94,12 @@ func (svc *Role) Create(q model.RoleCreateReq) *g.Error {
 	return g.WrapError(err, r.FailCreate)
 }
 
-func (svc *Role) Updates(q model.RoleUpdateReq) *g.Error {
+func (svc *roleService) Updates(q model.RoleUpdateReq) *g.Error {
 	// 要求
 	// 1.name 不能重复
 	// 2.角色菜单关联关系数据写入
 
-	err := g.DB.Transaction(func(tx *gorm.DB) error {
+	err := svc.db.Transaction(func(tx *gorm.DB) error {
 		m := map[string]any{"id": q.ID, "name": q.Name}
 		if _, gErr := svc.FindByID(tx, q.ID); gErr != nil {
 			return gErr
@@ -120,17 +127,17 @@ func (svc *Role) Updates(q model.RoleUpdateReq) *g.Error {
 	return g.WrapError(err, r.FailCreate)
 }
 
-func (svc *Role) Delete(ID string) *g.Error {
+func (svc *roleService) Delete(ID string) *g.Error {
 
 	// 要求
 	// 1.角色下有在使用用户不能删除
 	// 2.删除角色下所有菜单关系
 
-	err := g.DB.Debug().Transaction(func(tx *gorm.DB) error {
+	err := svc.db.Debug().Transaction(func(tx *gorm.DB) error {
 		if _, gErr := svc.FindByID(tx, ID); gErr != nil {
 			return gErr
 		}
-		if gErr := new(UserService).Verify(tx, map[string]any{"role_id": ID}); gErr != nil {
+		if gErr := new(userService).Verify(tx, map[string]any{"role_id": ID}); gErr != nil {
 			gErr.Text = "该角色下存在用户不能删除"
 			return gErr
 		}

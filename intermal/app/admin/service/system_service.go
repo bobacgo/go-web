@@ -4,17 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gogoclouds/go-web/intermal/app/admin/enum"
 	"github.com/gogoclouds/go-web/intermal/app/admin/model"
+	"github.com/gogoclouds/go-web/intermal/app/admin/model/enum"
 	"github.com/gogoclouds/go-web/intermal/common"
 	"github.com/gogoclouds/gogo/g"
 	"github.com/gogoclouds/gogo/logger"
+	"github.com/gogoclouds/gogo/web/r"
 	"github.com/mojocn/base64Captcha"
 	"github.com/wenlng/go-captcha/captcha"
+	"gorm.io/gorm"
 	"time"
 )
 
-type ISystem interface {
+type ISystemService interface {
 	Login(q model.LoginReq) (*model.LoginRsp, *g.Error)
 	Refresh(q model.RefreshTokenVo) (model.RefreshTokenVo, error)
 	Logout(username string) error
@@ -22,13 +24,23 @@ type ISystem interface {
 	CaptchaV2() (model.CaptchaV2Response, *g.Error)
 }
 
-var menuService IMenuService = new(MenuService)
+func NewSystemService(db *gorm.DB, userSvc IUserService, menuSvc IMenuService) ISystemService {
+	return &systemService{
+		db:          db,
+		userService: userSvc,
+		menuService: menuSvc,
+	}
+}
 
-type SystemService struct{}
+type systemService struct {
+	db          *gorm.DB
+	userService IUserService
+	menuService IMenuService
+}
 
 var ErrUserDisable = errors.New("用户被禁用")
 
-func (svc *SystemService) Login(q model.LoginReq) (*model.LoginRsp, *g.Error) {
+func (svc *systemService) Login(q model.LoginReq) (*model.LoginRsp, *g.Error) {
 
 	// 要求
 	// 1.校验验证码
@@ -40,14 +52,21 @@ func (svc *SystemService) Login(q model.LoginReq) (*model.LoginRsp, *g.Error) {
 	if !captchaStore.Verify(q.CaptchaKey, q.CaptchaCode, true) {
 		return nil, g.NewError("验证码不正确")
 	}
-	user, gErr := userService.findWithRoleByUsername(g.DB, q.Username)
+	user, gErr := svc.userService.FindWithRoleByUsername(svc.db, q.Username)
 	if gErr != nil {
 		return nil, g.NewError("用户名或密码错误")
 	}
 	if user.Status == enum.UserStatusDisable {
 		return nil, g.WrapError(ErrUserDisable, "账号处于封禁状态")
 	}
-	if !passwordHandler.bcryptVerify(user.ID, q.Password, user.Password) {
+	if !passwordHelper.bcryptVerify(user.ID, q.Password, user.Password, func() {
+		// 错误处理 达到一定错误次数后，禁用用户
+		if err := svc.userService.UpdateStatus(model.UserUpdateStatusReq{
+			IdReq: r.IdReq{ID: user.ID}, Status: enum.UserStatusDisable,
+		}); err != nil {
+			logger.Errorf("disable user [%s] err: %v", user.ID, err)
+		}
+	}) {
 		return nil, g.NewError("用户名或密码错误")
 	}
 
@@ -56,7 +75,7 @@ func (svc *SystemService) Login(q model.LoginReq) (*model.LoginRsp, *g.Error) {
 		return nil, g.WrapError(err, "登录出错")
 	}
 
-	tree, gErr := menuService.TreeByRole(user.RoleID)
+	tree, gErr := svc.menuService.TreeByRole(user.RoleID)
 	rsp := model.LoginRsp{
 		User:   user,
 		AToken: at,
@@ -66,7 +85,7 @@ func (svc *SystemService) Login(q model.LoginReq) (*model.LoginRsp, *g.Error) {
 	return &rsp, gErr
 }
 
-func (svc *SystemService) Refresh(q model.RefreshTokenVo) (model.RefreshTokenVo, error) {
+func (svc *systemService) Refresh(q model.RefreshTokenVo) (model.RefreshTokenVo, error) {
 	at, rt, err := jwtService.Refresh(q.AToken, q.RToken)
 	vo := model.RefreshTokenVo{
 		AToken: at,
@@ -75,18 +94,18 @@ func (svc *SystemService) Refresh(q model.RefreshTokenVo) (model.RefreshTokenVo,
 	return vo, err
 }
 
-func (svc *SystemService) Logout(username string) error {
+func (svc *systemService) Logout(username string) error {
 	err := jwtService.Remove(username)
 	return err
 }
 
-func (svc *SystemService) Captcha() (rsp model.CaptchaResponse, err error) {
+func (svc *systemService) Captcha() (rsp model.CaptchaResponse, err error) {
 	capt := base64Captcha.NewCaptcha(base64Captcha.DefaultDriverDigit, captchaStore)
 	rsp.CaptchaKey, rsp.ImgBase64, err = capt.Generate()
 	return
 }
 
-func (svc *SystemService) CaptchaV2() (model.CaptchaV2Response, *g.Error) {
+func (svc *systemService) CaptchaV2() (model.CaptchaV2Response, *g.Error) {
 	// 生成验证码
 	var (
 		rsp model.CaptchaV2Response

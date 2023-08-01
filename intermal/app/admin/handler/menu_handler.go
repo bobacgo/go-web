@@ -1,4 +1,4 @@
-package v1
+package handler
 
 import (
 	"github.com/gin-gonic/gin"
@@ -10,16 +10,22 @@ import (
 	"github.com/gogoclouds/gogo/web/r"
 )
 
-type MenuApi struct{}
+type MenuHandler struct {
+	menuService service.IMenuService
+}
 
-var menuService service.IMenuService = new(service.MenuService)
+func NewMenuHandler(svc service.IMenuService) *MenuHandler {
+	return &MenuHandler{
+		menuService: svc,
+	}
+}
 
-func (api MenuApi) Tree(ctx *gin.Context) {
+func (h *MenuHandler) Tree(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.MenuTreeReq](ctx)
 	if !ok {
 		return
 	}
-	pageResp, err := menuService.Tree(req)
+	pageResp, err := h.menuService.Tree(req)
 	if err != nil {
 		logger.Error(err)
 		reply.FailMsg(ctx, err.Text)
@@ -28,12 +34,12 @@ func (api MenuApi) Tree(ctx *gin.Context) {
 	reply.SuccessRead(ctx, pageResp)
 }
 
-func (api MenuApi) SimpleTree(ctx *gin.Context) {
+func (h *MenuHandler) SimpleTree(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.MenuTreeReq](ctx)
 	if !ok {
 		return
 	}
-	pageResp, err := menuService.SimpleTree(req)
+	pageResp, err := h.menuService.SimpleTree(req)
 	if err != nil {
 		logger.Error(err)
 		reply.FailMsg(ctx, err.Text)
@@ -42,12 +48,12 @@ func (api MenuApi) SimpleTree(ctx *gin.Context) {
 	reply.SuccessRead(ctx, pageResp)
 }
 
-func (api MenuApi) Create(ctx *gin.Context) {
+func (h *MenuHandler) Create(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.MenuCreateReq](ctx)
 	if !ok {
 		return
 	}
-	if err := menuService.Create(req); err != nil {
+	if err := h.menuService.Create(req); err != nil {
 		logger.Errorf("%+v", err)
 		reply.FailMsg(ctx, r.FailCreate)
 		return
@@ -55,26 +61,25 @@ func (api MenuApi) Create(ctx *gin.Context) {
 	reply.SuccessCreate(ctx)
 }
 
-func (api MenuApi) Update(ctx *gin.Context) {
+func (h *MenuHandler) Update(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[model.MenuUpdateReq](ctx)
 	if !ok {
 		return
 	}
-	if err := menuService.Save(req); err != nil {
+	if err := h.menuService.Save(req); err != nil {
 		logger.Error(err)
 		reply.FailMsg(ctx, err.Text)
 		return
 	}
 	reply.SuccessUpdate(ctx)
-	return
 }
 
-func (api MenuApi) Delete(ctx *gin.Context) {
+func (h *MenuHandler) Delete(ctx *gin.Context) {
 	req, ok := valid.ShouldBind[r.IdReq](ctx)
 	if !ok {
 		return
 	}
-	if err := menuService.Delete(req.ID); err != nil {
+	if err := h.menuService.Delete(req.ID); err != nil {
 		logger.Error(err)
 		reply.FailMsg(ctx, err.Text)
 		return

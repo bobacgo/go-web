@@ -1,12 +1,12 @@
 package model
 
 import (
+	"github.com/gogoclouds/go-web/intermal/app/admin/model/enum"
 	"github.com/golang-jwt/jwt"
 	"time"
 
 	"github.com/gogoclouds/go-web/intermal/common"
 
-	"github.com/gogoclouds/go-web/intermal/app/admin/enum"
 	"github.com/gogoclouds/gogo/web/orm"
 	"github.com/gogoclouds/gogo/web/r"
 )

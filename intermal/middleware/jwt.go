@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gogoclouds/go-web/intermal/app/admin/service"
 	"github.com/gogoclouds/go-web/intermal/common"
-	"github.com/gogoclouds/go-web/intermal/util"
+	"github.com/gogoclouds/go-web/pkg/util"
 	"github.com/gogoclouds/gogo/g"
 	"github.com/gogoclouds/gogo/web/gin/reply"
 	"github.com/gogoclouds/gogo/web/r"
