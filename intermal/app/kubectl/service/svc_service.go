@@ -40,7 +40,6 @@ func (svc *svcService) Create(ctx context.Context, o model.Service) error {
 	service := svc.makeService(o)
 	_, err := svc.k8sClient.CoreV1().Services(o.Namespace).Create(ctx, service, metav1.CreateOptions{})
 	return err
-
 }
 
 func (svc *svcService) Delete(ctx context.Context, o model.NamespaceWithName) error {
